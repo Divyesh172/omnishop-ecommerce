@@ -1,83 +1,72 @@
-import React, { useState, useEffect } from "react";
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
-import axios from "axios";
-import { useSelector } from "react-redux";
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { Loader } from 'lucide-react';
+import { useDispatch } from 'react-redux';
+import { addToCart } from '../redux/cartSlice';
 
-// REPLACE WITH YOUR PUBLISHABLE KEY (pk_test...)
-const stripePromise = loadStripe("pk_test_51SYpc5RpavmiTPeuA2sf83Th55zavNwbMpXkgqyORQqlohDmrZSKc41eLKIZodGJt3ZboQvylQZMmpdni0iV0Dto00vm7rQ2Yy");
-
-const CheckoutForm = () => {
-    const stripe = useStripe();
-    const elements = useElements();
-    const [message, setMessage] = useState(null);
-    const [isProcessing, setIsProcessing] = useState(false);
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (!stripe || !elements) return;
-
-        setIsProcessing(true);
-
-        const { error } = await stripe.confirmPayment({
-            elements,
-            confirmParams: {
-                // Change this line to point to /success
-                return_url: window.location.origin + "/success",
-            },
-        });
-
-        if (error) setMessage(error.message);
-        setIsProcessing(false);
-    };
-
-    return (
-        <form onSubmit={handleSubmit} className="bg-white p-8 rounded-xl shadow-lg border border-gray-100">
-            <h3 className="text-xl font-bold mb-6 text-slate-800">Enter Card Details</h3>
-            <PaymentElement />
-            <button
-                disabled={isProcessing || !stripe}
-                className="w-full mt-6 bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50"
-            >
-                {isProcessing ? "Processing..." : "Pay Now"}
-            </button>
-            {message && <div className="text-red-500 mt-4 text-sm">{message}</div>}
-        </form>
-    );
-};
-
-const Checkout = () => {
-    const [clientSecret, setClientSecret] = useState("");
-    const cart = useSelector((state) => state.cart);
-    const totalAmount = cart.cartItems.reduce((acc, item) => acc + item.price, 0);
+const Home = () => {
+    const [products, setProducts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const dispatch = useDispatch();
 
     useEffect(() => {
-        // Create PaymentIntent as soon as the page loads
-        if(totalAmount > 0) {
-            axios.post("http://localhost:5000/api/create-payment-intent", { amount: totalAmount })
-                .then((res) => setClientSecret(res.data.clientSecret));
-        }
-    }, [totalAmount]);
+        const fetchProducts = async () => {
+            try {
+                // UPDATED: Now pointing to your Live Render Backend
+                const { data } = await axios.get('https://omnishop-ecommerce.onrender.com/api/products');
+                setProducts(data);
+                setLoading(false);
+            } catch (error) {
+                console.error("Error fetching products:", error);
+                setLoading(false);
+            }
+        };
+        fetchProducts();
+    }, []);
 
-    const options = {
-        clientSecret,
-        theme: 'stripe',
+    const addToCartHandler = (product) => {
+        dispatch(addToCart(product));
+        alert("Added to Cart!");
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-            <div className="w-full max-w-md">
-                <h2 className="text-3xl font-bold text-center mb-8 text-slate-800">Secure Checkout</h2>
-                <div className="mb-6 text-center text-slate-600">Total to Pay: <span className="font-bold text-black">₹{totalAmount}</span></div>
-
-                {clientSecret && (
-                    <Elements options={options} stripe={stripePromise}>
-                        <CheckoutForm />
-                    </Elements>
-                )}
+        <div>
+            {/* Hero */}
+            <div className="bg-blue-600 text-white py-24 text-center">
+                <h2 className="text-5xl font-extrabold mb-4">Summer Tech Drop</h2>
+                <p className="text-xl mb-8 opacity-90">Up to 40% off on premium electronics</p>
+                <button className="bg-white text-blue-600 px-8 py-3 rounded-full font-bold hover:bg-gray-100 transition shadow-lg">Shop Now</button>
             </div>
+
+            {/* Product Grid */}
+            <main className="max-w-7xl mx-auto p-6 mt-10">
+                <h3 className="text-3xl font-bold mb-8 text-slate-800">Latest Arrivals</h3>
+                {loading ? (
+                    <div className="flex justify-center p-20"><Loader className="animate-spin" size={48} /></div>
+                ) : (
+                    <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-8">
+                        {products.map((product) => (
+                            <div key={product._id} className="bg-white rounded-xl shadow-sm hover:shadow-xl transition-all border border-gray-100 overflow-hidden group">
+                                <div className="h-48 overflow-hidden">
+                                    <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                </div>
+                                <div className="p-5">
+                                    <span className="text-xs font-bold text-blue-500 uppercase tracking-wider">{product.category}</span>
+                                    <h4 className="text-lg font-bold mt-2 text-slate-900 truncate">{product.name}</h4>
+                                    <div className="flex justify-between items-center mt-4">
+                                        <span className="text-xl font-bold text-slate-800">₹{product.price}</span>
+                                        <button onClick={() => addToCartHandler(product)} className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
+                                            Add
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </main>
         </div>
     );
 };
 
-export default Checkout;
+export default Home;
