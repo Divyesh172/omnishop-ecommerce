@@ -43,6 +43,7 @@ function App() {
                     <Route path="/" element={<Home />} />
                     <Route path="/cart" element={<Cart />} />
                     {/* THESE TWO ROUTES ARE CRITICAL: */}
+                    // Routing configuration
                     <Route path="/checkout" element={<Checkout />} />
                     <Route path="/success" element={<Success />} />
                 </Routes>
